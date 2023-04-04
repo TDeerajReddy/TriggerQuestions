@@ -1,4 +1,4 @@
-trigger OpportunityTrigger on Opportunity (before insert, before update, before delete, after insert, after update, after delete) { //NOPMD
+trigger OpportunityTrigger on Opportunity (before insert, before update, before delete, after insert, after update, after delete, after undelete) { //NOPMD
 
     switch on Trigger.operationType {
 
@@ -19,11 +19,15 @@ trigger OpportunityTrigger on Opportunity (before insert, before update, before 
 		}
 
         when BEFORE_DELETE {    //NOPMD
-
+            OpportunityTriggerHandler.beforeDelete(Trigger.old, Trigger.oldMap);
 		}
 
         when AFTER_DELETE { //NOPMD
 
 		}
+
+        when AFTER_UNDELETE {
+            OpportunityTriggerHandler.afterUndelete(Trigger.new, Trigger.newMap);
+        }
     }
 }
