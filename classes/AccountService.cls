@@ -9,7 +9,6 @@ public with sharing class AccountService {
                 contact.LastName = account.Name;
                 contact.Phone = account.Phone;
                 contact.CleanStatus = account.CleanStatus;
-                // contact.Jigsaw = account.Jigsaw;
                 contact.Fax = account.Fax;
                 contact.Description = account.Description;
                 contactList.add(contact);
@@ -96,26 +95,28 @@ public with sharing class AccountService {
         }
     }
 
-    // public static void updateContactRelatedPhoneUsingParentChildSOQL(List<Account> accountList, Map<Id, Account> newAccountMap) {
-    //     List<Contact> contactList = new List<Contact>([SELECT Id, AccountId, Name FROM Contact]);
-    //     List<Account> accounts = new List<Account>([SELECT Id,
-    //                                 (SELECT AccountId FROM Contacts) 
-    //                                 FROM Account WHERE Name IN : contactList]);
-    //     List<Contact> contacts = new List<Contact>();
-    //     for(Account account : accounts) {
-    //         for(Id contacts : contactList.AccountId) {
-    //             if(account.Id == contacts.AccountId) {
-    //                 Contact contact = new Contact();
-    //                 contact.HomePhone = account.Phone;
-    //                 contacts.add(contact);
-    //             }
-    //         }
-    //     }
+    //Not Working
+    public static void updateContactRelatedHomePhoneUsingParentChildSOQL(List<Account> newAccountList, Map<Id, Account> oldAccountMap) {
+        List<Account> accounts = [SELECT Id, Phone, (SELECT Id, Name, Phone FROM Contacts) FROM Account WHERE Id IN : newAccountList];
+        List<Contact> contactList = [SELECT Id, AccountId, HomePhone FROM Contact WHERE AccountId IN : accounts];
+        List<Contact> updateContacts = new List<Contact>();
 
-    //     if (!contacts.isEmpty()) {
-    //         update contacts;
-    //     }
-    // }
+        for(Account account : accounts) {
+            for(Contact contactIterator : contactList) {
+                if(account.Id == contactIterator.AccountId) {
+                    if(account.Phone != contactIterator.HomePhone) {
+                        contactIterator.HomePhone = account.Phone;
+                        updateContacts.add(contactIterator);
+                    }
+                }
+            }
+        }
+
+
+
+        if(!updateContacts.isEmpty())
+            update updateContacts;
+    }
 
     public static void updateContactMailingAddressUsingMap(List<Account> accountList, Map<Id, Account> newAccountMap) {
         List<Contact> relatedContacts = [SELECT 
@@ -126,24 +127,52 @@ public with sharing class AccountService {
                                         IN : newAccountMap.keySet()];
         
         List<Contact> contactList = new List<Contact>();
-        for(Id account : newAccountMap.keySet()) {
-            if(!relatedContacts.isEmpty()) {
+        if(!relatedContacts.isEmpty()) {
+            for(Id account : newAccountMap.keySet()) {
                 for(Contact relatedContact : relatedContacts) {
                     if(account == relatedContact.AccountId) {
-                        Contact contact = new Contact();
-                        contact.MailingStreet = newAccountMap.get(account).BillingStreet;
-                        contact.MailingCity= newAccountMap.get(account).BillingCity;
-                        contact.MailingPostalCode = newAccountMap.get(account).BillingPostalCode;
-                        contact.MailingState = newAccountMap.get(account).BillingState;
-                        contact.MailingCountry = newAccountMap.get(account).BillingCountry;
+                        Contact contact = new Contact(
+                            Id = relatedContact.Id,
+                            MailingStreet = newAccountMap.get(account).BillingStreet,
+                            MailingCity = newAccountMap.get(account).BillingCity,
+                            MailingPostalCode = newAccountMap.get(account).BillingPostalCode,
+                            MailingState = newAccountMap.get(account).BillingState,
+                            MailingCountry = newAccountMap.get(account).BillingCountry
+                        );  
                         contactList.add(contact);
                     }
                 }
             }
         }
-        if(!contactList.isEmpty()) {
-            update contactList; //NOPMD
+        
+        if(!contactList.isEmpty())  
+            update contactList;
+    }
+
+    //Not Working
+    public static void updateContactMailingAddressUsingParentChildSOQL(List<Account> newAccountList, Map<Id, Account> newAccountMap) {
+        Map<Id, Account> accountsMap = new Map<Id, Account>([SELECT Id, (SELECT AccountId FROM Contacts) 
+                                                            FROM Account WHERE Id IN : newAccountMap.keySet()]);
+        Map<Id,Contact> contactList = new Map<Id,Contact>([SELECT AccountId FROM Contact 
+                                                            WHERE AccountId IN : accountsMap.keySet()]);
+        List<Contact> contactsRelatedToAccount = new List<Contact>();
+        if(!accountsMap.isEmpty() && !contactList.isEmpty()) {
+            for(Id contact : contactList.keySet()) {
+                if(accountsMap.containsKey(contact)) {
+                    Contact contactObject = new Contact(
+                        Id = contact,
+                        MailingStreet = newAccountMap.get(contact).BillingStreet,
+                        MailingCity= newAccountMap.get(contact).BillingCity,
+                        MailingPostalCode = newAccountMap.get(contact).BillingPostalCode,
+                        MailingState = newAccountMap.get(contact).BillingState,
+                        MailingCountry = newAccountMap.get(contact).BillingCountry
+                    );
+                    contactsRelatedToAccount.add(contactObject);
+                }
+            }
         }
+        if(!contactsRelatedToAccount.isEmpty())
+            update contactsRelatedToAccount; //NOPMD
     }
 
     public static void updateOpportunityStage(List<Account> newAccountList) {
@@ -170,7 +199,6 @@ public with sharing class AccountService {
     }
 
     public static void preventDeletionOfAccountRelatedToOpprtunity(List<Account> oldAccountList, Map<Id, Account> oldAccountMap) {
-        // List<Opportunity> opportunity = [SELECT Id, AccountId FROM Oppertunity WHERE AccountId IN : oldAccountList];
         List<Opportunity> opportunities = [SELECT AccountId FROM Opportunity WHERE AccountId =: oldAccountMap.keySet()];
         Set<Id> accountIds = new Set<Id>();
         for(Opportunity opportunity : opportunities)
@@ -236,6 +264,24 @@ public with sharing class AccountService {
                 }
             }
         }
-        update contactList;
+        if(!contactList.isEmpty())
+            update contactList;
+    }
+
+    public static void owdSharedStandardUser(List<Account> newAccountList) {
+        Id standardUserProfileId = [SELECT Id FROM Profile WHERE Name = 'Standard User'].Id;
+
+        List<AccountShare> accountShares = new List<AccountShare>();
+        for (Account account : newAccountList) {
+                AccountShare share = new AccountShare();
+                share.AccountId = account.Id;
+                share.UserOrGroupId = standardUserProfileId;
+                // share.AccessLevel = 'Read';  //error
+                share.RowCause = Schema.AccountShare.RowCause.Manual;
+                accountShares.add(share);
+        }
+
+        if(!accountShares.isEmpty())
+            insert accountShares;   //NOPMD
     }
 }

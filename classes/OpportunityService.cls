@@ -24,4 +24,30 @@ public with sharing class OpportunityService {
         taskObj.WhatId = opportunity.Id;  
         return taskObj;
     }
+
+    public static void updateAccountAnnualRevenue(List<Opportunity> opportunityList) {
+        Set<Id> accountIds = new Set<Id>();
+        if(Trigger.isDelete && Trigger.isBefore) {
+            for (Opportunity opportunity : opportunityList) {
+                accountIds.add(opportunity.AccountId);
+            }
+        }
+
+        if(Trigger.isUndelete && Trigger.isAfter) {
+            for (Opportunity opportunity : opportunityList) {
+                accountIds.add(opportunity.AccountId);
+            }
+        }
+
+        List<Account> accountsToUpdate = new List<Account>();
+        for (Id accountId : accountIds) {
+            Account accountObject = new Account();
+                // accountObject.Id = accountId;
+                // accountObject.AnnualRevenue = [SELECT SUM(Amount) FROM Opportunity WHERE AccountId =: accountId AND IsDeleted = FALSE];
+            accountsToUpdate.add(accountObject);
+        }
+
+        if(!accountsToUpdate.isEmpty())
+            update accountsToUpdate;    //NOPMD
+    }
 }

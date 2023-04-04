@@ -12,6 +12,7 @@ public with sharing class AccountTriggerHandler {
             // createRelatedContactAnd_OrOpportunity(newAccountList);
             // AccountService.createOpportunity(newAccountList);
             AccountService.countPartnerORCustomerCasesOnAccount(newAccountList);    //22
+            AccountService.owdSharedStandardUser(newAccountList);    //Q31
         }
     }
 
@@ -21,7 +22,7 @@ public with sharing class AccountTriggerHandler {
             // updateBillingIntoShippingAddress(newAccountList, oldAccountMap);
             changeAccountRating(newAccountList);
             // notAllowedToBeEdited(oldAccountList);   //Q10/11
-            AccountService.ifOwnerChangeOnAccount(oldAccountList, newAccountList);  //Q27
+            // AccountService.ifOwnerChangeOnAccount(oldAccountList, newAccountList);  //Q27
 
         }
     }
@@ -29,11 +30,12 @@ public with sharing class AccountTriggerHandler {
     public static void afterUpdate(List<Account> newAccountList, MAp<Id, Account> newAccountMap ,List<Account> oldAccountList ,Map<Id, Account> oldAccountMap) {    //NOPMD
         if(!newAccountList.isEmpty() && !newAccountMap.isEmpty()) {
             // AccountService.updateContactRelatedPhoneUsingMap(newAccountList, newAccountMap);   //Q3
-            // AccountService.updateContactRelatedPhoneUsingParentChildSOQL(newAccountList, newAccountMap);   //Q4
             // AccountService.updateContactMailingAddressUsingMap(newAccountList, newAccountMap); //Q5
+            // AccountService.updateContactMailingAddressUsingParentChildSOQL(newAccountList, newAccountMap);  //Q6 //NotWorking
         }
         if(!newAccountList.isEmpty()) {
             // AccountService.updateOpportunityStage(newAccountList);  //Q8
+            AccountService.updateContactRelatedHomePhoneUsingParentChildSOQL(newAccountList, oldAccountMap);   //Q4
         }
     }
 
